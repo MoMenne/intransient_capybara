@@ -2,8 +2,9 @@ require "capybara/rails"
 require "capybara/poltergeist"
 require 'atomic'
 
-class IntransientCapybaraTest < ActionDispatch::IntegrationTest
-  extend Minitest::OptionalRetry
+class IntransientCapybaraTest
+  # not supported by rspec
+  #extend Minitest::OptionalRetry
 
   include IntransientCapybaraHelper
   include Capybara::DSL
@@ -19,8 +20,7 @@ class IntransientCapybaraTest < ActionDispatch::IntegrationTest
   Capybara.current_driver = :poltergeist
   Capybara.javascript_driver = :poltergeist
 
-  def setup
-    super
+  def setup_js_tests
 
     @setup_called = true
 
@@ -28,7 +28,7 @@ class IntransientCapybaraTest < ActionDispatch::IntegrationTest
       puts 'I am in capybara setup method'
     end
 
-    page.driver.browser.url_blacklist = self.class.blacklisted_urls
+    page.driver.browser.url_blacklist= self.class.blacklisted_urls
 
     resize_window_by default_window_size
 
@@ -37,7 +37,7 @@ class IntransientCapybaraTest < ActionDispatch::IntegrationTest
     allow_rack_requests!
   end
 
-  def teardown
+  def teardown_js_tests
     if ENV.fetch('TRACE_TEST_FRAMEWORK', false) == 'true'
       puts 'I am in capybara teardown method'
     end
@@ -55,22 +55,22 @@ class IntransientCapybaraTest < ActionDispatch::IntegrationTest
     page.driver.clear_cookies
     Capybara.reset_sessions!
 
-    super
   end
 
   protected
 
-  def after_teardown
-    super
-
-    unless @setup_called
-      raise 'Setup was not called in the parent!  You MUST call super in your overrides!'
-    end
-
-    unless @teardown_called
-      raise 'Teardown was not called in the parent!  You MUST call super in your overrides!'
-    end
-  end
+  # not supported by rspec
+  #def after_teardown
+  #  super
+  #
+  #  unless @setup_called
+  #    raise 'Setup was not called in the parent!  You MUST call super in your overrides!'
+  #  end
+  #
+  #  unless @teardown_called
+  #    raise 'Teardown was not called in the parent!  You MUST call super in your overrides!'
+  #  end
+  #end
 
   def default_window_size
     @@default_window_size || [1024, 768]
@@ -95,9 +95,11 @@ class IntransientCapybaraTest < ActionDispatch::IntegrationTest
     begin
       allow_rack_requests!
       visit cache_warmup_path
-      sleep 15
+      sleep 5
       wait_for_response!
       teardown_wait_for_requests_complete!
+      report_traffic
+      page.driver.clear_network_traffic
 
       @@warm_asset_cache.value = true
     rescue StandardError => e

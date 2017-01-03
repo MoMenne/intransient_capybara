@@ -16,7 +16,7 @@ module IntransientCapybaraHelper
         end
       end
     rescue StandardError
-      assert(false, "waited #{max_seconds} seconds for ajax complete but #{active_ajax_count} ajax calls still active")
+      raise "waited #{max_seconds} seconds for ajax complete but #{active_ajax_count} ajax calls still active"
     end
 
     true
@@ -101,5 +101,4 @@ module IntransientCapybaraHelper
   def resize_window_by(size)
     page.driver.resize size[0], size[1]
   end
-
 end
