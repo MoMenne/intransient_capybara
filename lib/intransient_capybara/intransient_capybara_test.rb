@@ -20,6 +20,18 @@ class IntransientCapybaraTest
   Capybara.current_driver = :poltergeist
   Capybara.javascript_driver = :poltergeist
 
+  def setup_normal_test
+    setup_js_tests
+  end
+
+  def teardown_normal_test
+    teardown_js_tests
+  end
+
+  def warm_it_up
+    warm_asset_cache
+  end
+
   def setup_js_tests
 
     @setup_called = true
@@ -28,7 +40,7 @@ class IntransientCapybaraTest
       puts 'I am in capybara setup method'
     end
 
-    page.driver.browser.url_blacklist= self.class.blacklisted_urls
+    page.driver.browser.url_blacklist= self.class.blacklisted_urls if page.driver.browser.respond_to? :url_blacklist=
 
     resize_window_by default_window_size
 
@@ -50,9 +62,9 @@ class IntransientCapybaraTest
     teardown_wait_for_requests_complete!
 
     report_traffic
-    page.driver.clear_network_traffic
+    page.driver.clear_network_traffic if page.driver.respond_to? :clear_network_traffic
 
-    page.driver.clear_cookies
+    page.driver.clear_cookie if page.driver.respond_to? :clear_cookie
     Capybara.reset_sessions!
 
   end
@@ -95,7 +107,7 @@ class IntransientCapybaraTest
     begin
       allow_rack_requests!
       visit cache_warmup_path
-      sleep 5
+      sleep 15
       wait_for_response!
       teardown_wait_for_requests_complete!
       report_traffic

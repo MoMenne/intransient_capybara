@@ -5,7 +5,7 @@ module IntransientCapybaraHelper
     wait_for_ajax!(max_ajax_seconds)
   end
 
-  def wait_for_ajax!(max_seconds = 3)
+  def wait_for_ajax!(max_seconds = 5)
     active_ajax_count = nil
 
     begin
@@ -16,7 +16,7 @@ module IntransientCapybaraHelper
         end
       end
     rescue StandardError
-      raise "waited #{max_seconds} seconds for ajax complete but #{active_ajax_count} ajax calls still active"
+      raise "waited #{max_seconds} seconds for ajax complete but #{active_ajax_count} ajax calls still active" unless active_ajax_count.nil?
     end
 
     true
@@ -70,35 +70,39 @@ module IntransientCapybaraHelper
   end
 
   def stop_client
-    page.execute_script %Q{
-      window.location = "about:blank";
-    }
+    begin
+      page.execute_script %Q{ window.location = "about:blank"; }
+    rescue Capybara::NotSupportedByDriverError => e
+      #puts "not supported"
+    end
   end
 
   def report_traffic
     if ENV.fetch('DEBUG_TEST_TRAFFIC', false) == 'true'
-      puts "Downloaded #{page.driver.network_traffic.map(&:response_parts).flatten.map(&:body_size).compact.sum / 1.megabyte} megabytes"
-      puts "Processed #{page.driver.network_traffic.size} network requests"
+      if page.driver.respond_to? :network_traffic
+        puts "Downloaded #{page.driver.network_traffic.map(&:response_parts).flatten.map(&:body_size).compact.sum / 1.megabyte} megabytes"
+        puts "Processed #{page.driver.network_traffic.size} network requests"
 
-      grouped_urls = page.driver.network_traffic.map(&:url).group_by{|url| /\Ahttps?:\/\/(?:.*\.)?(?:localhost|127\.0\.0\.1)/.match(url).present?}
-      internal_urls = grouped_urls[true]
-      external_urls = grouped_urls[false]
+        grouped_urls = page.driver.network_traffic.map(&:url).group_by{|url| /\Ahttps?:\/\/(?:.*\.)?(?:localhost|127\.0\.0\.1)/.match(url).present?}
+        internal_urls = grouped_urls[true]
+        external_urls = grouped_urls[false]
 
-      if internal_urls.present?
-        puts "Local URLs queried: #{internal_urls}"
-      end
+        if internal_urls.present?
+          puts "Local URLs queried: #{internal_urls}"
+        end
 
-      if external_urls.present?
-        puts "External URLs queried: #{external_urls}"
+        if external_urls.present?
+          puts "External URLs queried: #{external_urls}"
 
-        if ENV.fetch('DEBUG_TEST_TRAFFIC_RAISE_EXTERNAL', false) == 'true'
-          raise "Queried external URLs!  This will be slow! #{external_urls}"
+          if ENV.fetch('DEBUG_TEST_TRAFFIC_RAISE_EXTERNAL', false) == 'true'
+            raise "Queried external URLs!  This will be slow! #{external_urls}"
+          end
         end
       end
     end
   end
 
   def resize_window_by(size)
-    page.driver.resize size[0], size[1]
+    page.driver.resize size[0], size[1] if page.driver.respond_to? :resize
   end
 end
